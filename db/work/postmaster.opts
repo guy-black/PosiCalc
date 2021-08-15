@@ -1,0 +1,1 @@
+/nix/store/nvn2jffiqhrylqvw2zi599px25x9dwaa-postgresql-10.10/bin/postgres "-D" "/home/guy/posicalc/db/work" "-h" "" "-k" "/home/guy/posicalc/db/work"
