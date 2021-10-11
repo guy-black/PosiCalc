@@ -15,6 +15,11 @@ library
                , gargoyle-postgresql-connect
                , database-id-class
                , resource-pool
+               , aeson
+               , bytestring
+               , text
+               , postgresql-simple
+               , snap-core
   exposed-modules:
     Backend
   ghc-options: -Wall -Wredundant-constraints -Wincomplete-uni-patterns -Wincomplete-record-updates -O -fno-show-valid-hole-fits
@@ -30,3 +35,8 @@ executable backend
                , common
                , frontend
                , obelisk-backend
+               , aeson
+               , bytestring
+               , text
+               , postgresql-simple
+               , snap-core

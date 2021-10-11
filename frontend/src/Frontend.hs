@@ -147,19 +147,22 @@ numberPad = do
   where
     numberButton n = buttonClass "number" n
 
+
 runOp :: Fractional a => Op -> a -> a -> a
 runOp s = case s of
   Plus -> (+)
   Minus -> (-)
   Times -> (*)
   Divide -> (/)
+  Percent -> (\x y -> y/100*x)
+
 
 quoteRoute :: Text
 quoteRoute = renderBackendRoute checkedFullRouteEncoder $ BackendRoute_GetQuote :/ ()
 
 fromMaybe :: a -> Maybe a -> a
-fromMaybe def m = case m of
-  Nothing -> def
+fromMaybe de m = case m of
+  Nothing -> de
   Just j -> j
 
 happQuote :: AppWidget js t m => Event t Text -> m (Dynamic t Text)
@@ -228,15 +231,39 @@ desktopCalc = divClass "calculator" $ do
             -- old style "style" =: "background: lightblue"
           else Map.empty
 
+radioButton :: AppWidget js t m => Bool -> Text -> Text -> m (InputElement EventResult (DomBuilderSpace m) t)
+radioButton isDefault group label = do
+  rec
+    retEl <- inputElement $
+      (InputElementConfig "" Nothing isDefault Nothing
+       (def {_elementConfig_initialAttributes =
+             ((AttributeName Nothing "type") =: "radio" <>
+              (AttributeName Nothing "id") =: label <>
+              (AttributeName Nothing "name") =: group <>
+              (AttributeName Nothing "value") =: label)}))
+    elAttr "label" ("for" =: label) $ text label
+  return retEl
+
+
+numberInput :: AppWidget js t m => m (InputElement EventResult (DomBuilderSpace m) t)
+numberInput =
+  inputElement $
+    (InputElementConfig "" Nothing False Nothing
+     (def {_elementConfig_initialAttributes = ((AttributeName Nothing "type") =: "number")}))
+
 formulaCalc :: AppWidget js t m => m ()
-formulaCalc = text "Formulas and conversions calculator"
+formulaCalc =
+  divClass "convType" $ do
+    radioButton False "te" "st"
+    numInput <- numberInput
+    display (_inputElement_value numInput)
 
 longFormCalc :: AppWidget js t m => m ()
 longFormCalc = text "Long form calculator"
 
 header :: AppWidget js t m => m ()
 header = divClass "header" $ do
-  elAttr "a" ("href" =: "/") $ text "Simple Calculator"
+  elAttr "a" ("href" =: "/" <> "class" =: "number") $ text "Simple Calculator"
   elAttr "a" ("href" =: "/formula") $ text "Formulas and Conversions"
   elAttr "a" ("href" =: "/longform") $ text "Longform Calculator"
 
@@ -250,6 +277,10 @@ app =
     FrontendRoute_LongForm ->
       longFormCalc
 
+viewport :: Map Text Text
+viewport = "name" =: "viewport"
+        <> "content" =: "width=device-width"
+
 -- This runs in a monad that can be run on the client or the server.
 -- To run code in a pure client or pure server context, use one of the
 -- `prerender` functions.
@@ -258,6 +289,7 @@ frontend = Frontend
   { _frontend_head = do
       el "title" $ text "posicalc ^-^ <3"
       elAttr "link" ("href" =: static @"main.css" <> "type" =: "text/css" <> "rel" =: "stylesheet") blank
+      elAttr "meta" viewport blank
   , _frontend_body = do
       header
       app

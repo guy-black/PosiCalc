@@ -98,3 +98,14 @@ Body {
 .calculator .input .number-pad button.zero {
     grid-area: zero;
 }
+
+.header a {
+    outline: none;
+    border: none;
+    border-radius: 20px;
+    background-color: #BBB;
+    min-width: 40px;
+    color: black;
+    line-height: 40px;
+    text-decoration: none;
+}
