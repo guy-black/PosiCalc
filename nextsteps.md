@@ -33,5 +33,4 @@
 # backend
 - add more happy quotes
 # general
-- organize code
 - write out way too many comments
