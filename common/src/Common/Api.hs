@@ -47,6 +47,8 @@ type WidgetWithJS js t m =
 -- but i was too lazy too look it up so I just made it real quick
 showText :: Show a => a -> Text
 showText = pack . show
+readText :: Read a => Text -> a
+readText = read . unpack
 fromMaybe :: a -> Maybe a -> a
 fromMaybe de m = case m of
   Nothing -> de
@@ -77,7 +79,7 @@ buttonClass c s = do
   (e, _) <- elAttr' "button" ("type" =: "button" <> "class" =: c) $ text s
   return $ domEvent Click e
 
-numberPad :: (DomBuilder t m) => m (Event t Text)
+{--numberPad :: (DomBuilder t m) => m (Event t Text)
 numberPad = do
   b7 <- ("7" <$) <$> numberButton "7"
   b8 <- ("8" <$) <$> numberButton "8"
@@ -89,9 +91,71 @@ numberPad = do
   b2 <- ("2" <$) <$> numberButton "2"
   b3 <- ("3" <$) <$> numberButton "3"
   b0 <- ("0" <$) <$> buttonClass "number zero" "0"
-  return $ leftmost [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9]
+  bPeriod <- ("." <$) <$> buttonClass "number" "."
+        return $ leftmost [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9]
   where
     numberButton n = buttonClass "number" n
+-}
+
+data NumPadChgs = Num Char
+                | Mod Char
+                | Bcksp
+                | SetVal Text
+
+
+numberPad :: AppWidget js t m => Event t Text -> Event t b ->  m (Dynamic t Text)
+numberPad setValEv bckspEv = do
+  b7 <- ((Num '7') <$) <$> buttonClass "number" "7"
+  b8 <- ((Num '8') <$) <$> buttonClass "number" "8"
+  b9 <- ((Num '9') <$) <$> buttonClass "number" "9"
+  b4 <- ((Num '4') <$) <$> buttonClass "number" "4"
+  b5 <- ((Num '5') <$) <$> buttonClass "number" "5"
+  b6 <- ((Num '6') <$) <$> buttonClass "number" "6"
+  b1 <- ((Num '1') <$) <$> buttonClass "number" "1"
+  b2 <- ((Num '2') <$) <$> buttonClass "number" "2"
+  b3 <- ((Num '3') <$) <$> buttonClass "number" "3"
+  b0 <- ((Num '0') <$) <$> buttonClass "number zero" "0"
+  bDot <- ((Mod '.') <$) <$> buttonClass "number" "."
+  bInv <- ((Mod 'p') <$) <$> buttonClass "number" "+/-"
+  foldDyn updateNumPadVal "" $ leftmost [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, bDot, bInv, (Bcksp <$ bckspEv), (SetVal <$> setValEv)]
+
+updateNumPadVal :: NumPadChgs -> Text -> Text
+updateNumPadVal chg prevTxt =
+ case chg of
+   Num d -> (prevTxt <> (T.singleton d))
+   Mod m ->
+     if m == '.' && T.find (== '.') prevTxt == Nothing
+     then (prevTxt <> ".")
+     else if m == 'p' && T.head prevTxt /= '-'
+     then ("-"<>prevTxt)
+     else if m == 'p' && T.head prevTxt == '-'
+     then (T.tail prevTxt)
+     else prevTxt
+   Bcksp -> T.dropEnd 1 prevTxt
+   SetVal t ->
+     case verify t of
+       Nothing -> prevTxt
+       Just tt -> tt
+
+
+
+verify :: Text -> Maybe Text
+verify t =
+  case (readMaybe (unpack t)::Maybe Float) of
+    Just tt -> Just t
+    Nothing ->
+      if t == "" -- handle empty text now to avoid head exceptions
+      then Just ""
+      else if t == "-" || t == "." -- check for things that would fail readMaybe but could still be a number in the making
+      then Just t -- allow just '-' or just '.'
+      else if T.head t == '.' && (readMaybe ("0"++(unpack t))::Maybe Float) /= Nothing -- if text starts with . but passes otherwise
+      then Just t
+      else if T.last t == '.' && (readMaybe ((unpack t)++"0")::Maybe Float) /= Nothing -- if text ends with . but passes otherwise
+      then Just t
+      else if (readMaybe (unpack (T.replace "-." "-0." t))::Maybe Float) /= Nothing -- if it passes with -. changed to -0.
+      then Just t
+      else Nothing
+
 
 
 -- quote getting thing

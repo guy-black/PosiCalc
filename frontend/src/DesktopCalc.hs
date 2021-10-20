@@ -35,11 +35,13 @@ import Common.Route
 data Op = Plus | Minus | Times | Divide | Percent
   deriving (Eq, Ord, Show)
 
+
 data CalcState = CalcState
   { _calcState_acc      :: Maybe Double  -- accumulator
   , _calcState_op       :: Maybe Op      -- most recently requested operation
-  , _calcState_input    :: Text          -- current input
   , _calcState_quoteAct :: Bool
+  , _calcState_npSet    :: Maybe Text
+  , _calcState_npBcksp  :: Bool
   } deriving (Show)
 
 data Button
@@ -47,50 +49,43 @@ data Button
   | ButtonOp Op
   | ButtonEq
   | ButtonClear
-  | ButtonPosNeg
   | ButtonBcksp
 
 initCalcState :: CalcState
-initCalcState = CalcState Nothing Nothing "" False
+initCalcState = CalcState Nothing Nothing False Nothing False
 
-updateCalcState :: CalcState -> Button -> CalcState
-updateCalcState state@(CalcState acc mOp input qa) btn =
+updateCalcState :: CalcState -> (Text, Button) -> CalcState
+updateCalcState state@(CalcState acc mOp qa nps npb) (input, btn) =
   case btn of
-    ButtonNumber d ->
-      if d == "." && T.find (== '.') input /= Nothing
-      then state
-      else CalcState acc mOp (input <> d) False
-    ButtonOp pushedOp -> applyOp state (Just pushedOp)
-    ButtonEq -> applyOp state Nothing
-    ButtonClear -> initCalcState
+    ButtonNumber _ ->
+      state
+    ButtonOp pushedOp -> applyOp input state (Just pushedOp)
+    ButtonEq -> applyOp input state Nothing
+    ButtonClear -> initCalcState {_calcState_npSet = (Just "")}
     ButtonBcksp ->
       if (T.length input > 0)
-      then CalcState acc mOp (T.init input) False
+      then state {_calcState_npBcksp = True}
       else case mOp of
-        Just _ -> CalcState acc Nothing "" False
+        Just _ -> CalcState acc Nothing False Nothing False
         Nothing -> case acc of
-          Nothing -> CalcState Nothing Nothing "" False
-          Just ac -> updateCalcState (CalcState Nothing Nothing (T.pack $ show ac) False) ButtonBcksp
-    ButtonPosNeg ->
-      if (T.isPrefixOf "-" input)
-      then CalcState acc mOp (T.drop 1 input) False
-      else CalcState acc mOp ("-" <> input) False
+          Nothing -> initCalcState
+          Just ac -> initCalcState {_calcState_npSet = Just (T.dropEnd 1 (showText ac))}
 
-applyOp :: CalcState -> Maybe Op -> CalcState
-applyOp state@(CalcState acc mOp input qa) mOp' =
+applyOp :: Text -> CalcState -> Maybe Op -> CalcState
+applyOp input state@(CalcState acc mOp qa nps npb) mOp' =
   if T.null input
   then
-    CalcState acc mOp' input False
+    CalcState acc mOp' False Nothing False
   else
     case readMaybe (unpack input) of
-      Nothing -> CalcState acc mOp "" False -- should only happen if input cannot be parsed as number so reset input
+      Nothing -> CalcState acc mOp False Nothing False -- should only happen if input in numpad ends or stars with . or has a -., do nothing
       Just x -> case mOp of
-        Nothing -> CalcState (Just x) mOp' "" False
+        Nothing -> CalcState (Just x) mOp' False (Just "") False -- need to clear numpad here
         Just op ->
           -- only in this case do I want to get a new quote
           case acc of
-            Nothing -> CalcState (Just (runOp op 0 x)) mOp' "" True
-            Just a -> CalcState (Just (runOp op a x)) mOp' "" True
+            Nothing -> CalcState (Just (runOp op 0 x)) mOp' True (Just "") False -- need to clear numpad here
+            Just a -> CalcState (Just (runOp op a x)) mOp' True (Just "") False -- need to clear numpad here
 
 
 mop2Text :: Maybe Op -> Text
@@ -103,8 +98,8 @@ mop2Text mOp =
     Just Divide -> " / "
     Just Percent -> " % "
 
-displayCalcState :: CalcState -> Text
-displayCalcState (CalcState acc mOp input qa) =
+displayCalcState :: (CalcState, Text) -> Text
+displayCalcState ((CalcState acc mOp qa nps npb), input) =
   case acc of
     Nothing -> " " <> mop2Text mOp <> input
     Just accc -> ((T.pack . show) accc) <> mop2Text mOp <> input
@@ -117,19 +112,19 @@ runOp s = case s of
   Divide -> (/)
   Percent -> (\x y -> y/100*x)
 
+
 desktopCalc :: forall js t m. (AppWidget js t m, Prerender js t m, PerformEvent t m, TriggerEvent t m, DomBuilder t m, MonadHold t m, MonadFix m, PostBuild t m) => m ()
 desktopCalc = divClass "calculator" $ do
   rec
-    divClass "output" $ dynText $ displayCalcState <$> calcState
+    divClass "output" $ dynText $ displayCalcState <$> ffor2 calcState numPad (,)
     divClass "output" $
       prerender_
         (text "")
         (quoteBox (ffilter _calcState_quoteAct (updated calcState)))
+    numPad <- divClass "number-pad input" $ do
+        numPad <- numberPad (fmapMaybe id (_calcState_npSet <$> (updated calcState))) (ffilter id (_calcState_npBcksp <$> (updated calcState)))
+        return numPad
     buttons <- divClass "input" $ do
-      (numberButtons, bPeriod) <- divClass "number-pad" $ do
-        numberButtons <- numberPad
-        bPeriod <- ("." <$) <$> buttonClass "number" "."
-        return (numberButtons, bPeriod)
       (opButtons, bEq) <- divClass "ops-pad" $ do
         let opState = _calcState_op <$> calcState
         bPlus <- opButton Plus "+" opState
@@ -139,22 +134,18 @@ desktopCalc = divClass "calculator" $ do
         let opButtons = leftmost [bPlus, bMinus, bTimes, bDivide]
         bEq <- buttonClass "primary" "="
         return (opButtons, bEq)
-      (bClear, bBcksp, bPosNeg) <- divClass "other-pad" $ do
+      (bClear, bBcksp) <- divClass "other-pad" $ do
         bClear <- buttonClass "secondary" "C"
         bBcksp <- buttonClass "secondary" "⌫"
-        bPosNeg <- buttonClass "secondary" "+/-"
-        return (bClear, bBcksp, bPosNeg)
+        return (bClear, bBcksp)
       return (leftmost
-            [ ButtonNumber <$> numberButtons
-            , ButtonNumber <$> bPeriod
-            , ButtonOp <$> opButtons
+            [ ButtonOp <$> opButtons
             , ButtonEq <$ bEq
             , ButtonClear <$ bClear
-            , ButtonPosNeg <$ bPosNeg
             , ButtonBcksp <$ bBcksp
             ])
      -- return buttons
-    calcState <- accumDyn updateCalcState initCalcState buttons
+    calcState <- accumDyn updateCalcState initCalcState (attach (current numPad) buttons)
   return ()
   where
     opButton :: Op -> Text -> Dynamic t (Maybe Op) -> m (Event t Op)

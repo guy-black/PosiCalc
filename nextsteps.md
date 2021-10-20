@@ -1,5 +1,8 @@
 # frontend
 - rework all styles.
+- fix whatever i broke on numberpad
+  - set it in conversion calculator
+  - feel smug about my modular number pad
 - make longform calculations work
   - number pad like on main calc, but extended
     - 0-9
