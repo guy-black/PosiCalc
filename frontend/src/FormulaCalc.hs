@@ -148,7 +148,7 @@ convert num from to =
     Nothing -> ""
     Just n ->
       -- checking if a conversion even needs to happen
-      if (from == to) then
+      if from == to && from /= NONE then
         num
       else
         case (from, to) of
@@ -221,9 +221,10 @@ formulaCalc :: AppWidget js t m => m ()
 formulaCalc =
   divClass "convType" $ do
     dynConvType <- convPicker
-    numInput <- numberInput
+    numInput <- numberPad never never never never
+    dynText ((\(x, y) -> x<>y) <$> numInput)
     fromUnit <- dropdown NONE (convMap <$> dynConvType) (DropdownConfig never (constDyn Map.empty))
     rec
-      display (ffor3 (_inputElement_value numInput) (_dropdown_value fromUnit) (_dropdown_value toUnit) convert)
+      display (ffor3 ((\(x, y) -> x<>y) <$> numInput) (_dropdown_value fromUnit) (_dropdown_value toUnit) convert)
       toUnit <- dropdown NONE (convMap <$> dynConvType) (DropdownConfig never (constDyn Map.empty))
     return ()

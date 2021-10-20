@@ -1,24 +1,27 @@
 # frontend
-- rework all styles.
-- fix whatever i broke on numberpad
-  - set it in conversion calculator
-  - feel smug about my modular number pad
 - make longform calculations work
-  - number pad like on main calc, but extended
-    - 0-9
-    - +,-,*,/
-    - ()
-    - ^
-    - left/right/bcksp/clear
+  - number pad widget
+    - on first click start number segment of equation
+    - when click away, convert -. to -0., preface leading . with 0
+    - if trailing or naked . or naked -, then highlight problem instead of leaving segment
+    - after leaving segment, push it in the correct spot in the list of equation segments
+    - if click away to an open parenthesis, add a multiplication sign inbetween, making implicit explicit
+  - operators/symbols widget
+    - no two consecutive operators
+    - clicking on more operators before clicking away just changes the operator
+    - cannot click away to closing parenthesis
+    - on click away, is pushed to correct spot in the segment list
+  - parenthesis widget
+    - just keep track of number of parernthesis level
+      - on open parenthesis, push an open parenthesis of level to the right spot in segment list, increment paren level
+      - close paren only available if
+        - paren level > 0 and
+        - current active widget isn't operator
+      - on close paren, add close paren segment to sement list
+    - number parens in segment list
+    - only allow solve if paren level 0
   - on solve
-    - parse and verify the expression is valid
-      - make sure all parenthesis open and close correctly
-        - entire expression within parenthesis must be valid expresion, recursively feed it into verify function
-      - make sure there's no operators with no value inbetween, no handing op at the end
-    - if expr fails verify
-      - highlight error
-    - if expr is valid
-      - solve most deeply nested parenthesis
+    - solve most deeply nested parenthesis
         - print new expression with simplified parenthesis
         - repeat until all parenthesis are gone
       - apply most deeply nested exponents to their bases
@@ -32,6 +35,8 @@
           - repeat until no more multiplication or division
       - there should only be numbers and plus or minuses now
       - solve leftmost operation and print result until final result
+- graphing calculator?
+- make it look good
             
 # backend
 - add more happy quotes

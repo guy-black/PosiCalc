@@ -100,11 +100,13 @@ numberPad = do
 data NumPadChgs = Num Char
                 | Mod Char
                 | Bcksp
-                | SetVal Text
+                | SetVal (Text, Text)
+                | CurLeft
+                | CurRight
 
 
-numberPad :: AppWidget js t m => Event t Text -> Event t b ->  m (Dynamic t Text)
-numberPad setValEv bckspEv = do
+numberPad :: AppWidget js t m => Event t (Text, Text) -> Event t a -> Event t b -> Event t c ->  m (Dynamic t (Text, Text))
+numberPad setValEv bckspEv leftEv rightEv = do
   b7 <- ((Num '7') <$) <$> buttonClass "number" "7"
   b8 <- ((Num '8') <$) <$> buttonClass "number" "8"
   b9 <- ((Num '9') <$) <$> buttonClass "number" "9"
@@ -114,29 +116,36 @@ numberPad setValEv bckspEv = do
   b1 <- ((Num '1') <$) <$> buttonClass "number" "1"
   b2 <- ((Num '2') <$) <$> buttonClass "number" "2"
   b3 <- ((Num '3') <$) <$> buttonClass "number" "3"
-  b0 <- ((Num '0') <$) <$> buttonClass "number zero" "0"
+  b0 <- ((Num '0') <$) <$> buttonClass "number" "0"
   bDot <- ((Mod '.') <$) <$> buttonClass "number" "."
   bInv <- ((Mod 'p') <$) <$> buttonClass "number" "+/-"
-  foldDyn updateNumPadVal "" $ leftmost [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, bDot, bInv, (Bcksp <$ bckspEv), (SetVal <$> setValEv)]
+  foldDyn updateNumPadVal ("", "") $ leftmost [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, bDot, bInv, (Bcksp <$ bckspEv), (SetVal <$> setValEv), (CurLeft <$ leftEv), (CurRight <$ rightEv)]
 
-updateNumPadVal :: NumPadChgs -> Text -> Text
-updateNumPadVal chg prevTxt =
+updateNumPadVal :: NumPadChgs -> (Text, Text) -> (Text, Text)
+updateNumPadVal chg (bck, fwd) =
  case chg of
-   Num d -> (prevTxt <> (T.singleton d))
+   Num d -> (bck <> (T.singleton d), fwd)
    Mod m ->
-     if m == '.' && T.find (== '.') prevTxt == Nothing
-     then (prevTxt <> ".")
-     else if m == 'p' && T.head prevTxt /= '-'
-     then ("-"<>prevTxt)
-     else if m == 'p' && T.head prevTxt == '-'
-     then (T.tail prevTxt)
-     else prevTxt
-   Bcksp -> T.dropEnd 1 prevTxt
-   SetVal t ->
-     case verify t of
-       Nothing -> prevTxt
-       Just tt -> tt
-
+     if m == '.' && T.find (== '.') bck == Nothing && T.find (== '.') fwd == Nothing
+     then (bck <> ".", fwd)
+     else if m == 'p' && T.find (== '-') bck == Nothing && T.find (== '-') fwd == Nothing
+     then ("-" <> bck, fwd)
+     else if m == 'p' && T.head bck == '-'
+     then (T.tail bck, fwd)
+     else (bck, fwd)
+   Bcksp -> (T.dropEnd 1 bck, fwd)
+   SetVal (t, u) ->
+     case verify (t<>u) of
+       Nothing -> (bck, fwd)
+       Just tt -> (t, u)
+   CurLeft ->
+     if bck == ""
+     then (bck, fwd)
+     else (T.dropEnd 1 bck, (T.takeEnd 1 bck)<>fwd)
+   CurRight ->
+     if fwd == ""
+     then (bck, fwd)
+     else (bck<>(T.take 1 fwd), (T.drop 1 fwd))
 
 
 verify :: Text -> Maybe Text
