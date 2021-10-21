@@ -21,6 +21,7 @@ import qualified Data.Text as T
 import Text.Read
 import Reflex.Dom.Core
 import Control.Monad.Fix (MonadFix)
+import Control.Monad (join)
 import Language.Javascript.JSaddle (MonadJSM)
 
 import Obelisk.Frontend
@@ -104,8 +105,8 @@ mop2Text mOp =
 displayCalcState :: AppWidget js t m => (CalcState, (Text, Text)) -> m()
 displayCalcState ((CalcState acc mOp qa nps npb npl npr), (bck, fwd)) =
   case acc of
-    Nothing -> text (" " <> mop2Text mOp <> bck <> "|" <> fwd)
-    Just accc -> text (((T.pack . show) accc) <> mop2Text mOp <> bck <> "|" <> fwd)
+    Nothing -> text (" " <> mop2Text mOp <> bck <> fwd)
+    Just accc -> text (((T.pack . show) accc) <> mop2Text mOp <> bck <> fwd)
 
 runOp :: Fractional a => Op -> a -> a -> a
 runOp s = case s of
@@ -120,10 +121,11 @@ desktopCalc :: forall js t m. (AppWidget js t m, Prerender js t m, PerformEvent 
 desktopCalc = divClass "calculator" $ do
   rec
     divClass "output" $ dyn_ $ displayCalcState <$> ffor2 calcState numPad (,)
+    dynQuote <- prerender
+      (return (constDyn ""))
+      (quoteBox (ffilter _calcState_quoteAct (updated calcState)))
     divClass "output" $
-      prerender_
-        (text "")
-        (quoteBox (ffilter _calcState_quoteAct (updated calcState)))
+      dynText (join dynQuote)
     (buttons, numPad) <- divClass "input" $ do
       numPad <- divClass "number-pad" $ do
         numPad <- numberPad (fmapMaybe id (_calcState_npSet <$> (updated calcState))) (ffilter id (_calcState_npBcksp <$> (updated calcState))) never never

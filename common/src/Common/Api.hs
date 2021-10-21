@@ -79,31 +79,12 @@ buttonClass c s = do
   (e, _) <- elAttr' "button" ("type" =: "button" <> "class" =: c) $ text s
   return $ domEvent Click e
 
-{--numberPad :: (DomBuilder t m) => m (Event t Text)
-numberPad = do
-  b7 <- ("7" <$) <$> numberButton "7"
-  b8 <- ("8" <$) <$> numberButton "8"
-  b9 <- ("9" <$) <$> numberButton "9"
-  b4 <- ("4" <$) <$> numberButton "4"
-  b5 <- ("5" <$) <$> numberButton "5"
-  b6 <- ("6" <$) <$> numberButton "6"
-  b1 <- ("1" <$) <$> numberButton "1"
-  b2 <- ("2" <$) <$> numberButton "2"
-  b3 <- ("3" <$) <$> numberButton "3"
-  b0 <- ("0" <$) <$> buttonClass "number zero" "0"
-  bPeriod <- ("." <$) <$> buttonClass "number" "."
-        return $ leftmost [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9]
-  where
-    numberButton n = buttonClass "number" n
--}
-
 data NumPadChgs = Num Char
                 | Mod Char
                 | Bcksp
                 | SetVal (Text, Text)
                 | CurLeft
                 | CurRight
-
 
 numberPad :: AppWidget js t m => Event t (Text, Text) -> Event t a -> Event t b -> Event t c ->  m (Dynamic t (Text, Text))
 numberPad setValEv bckspEv leftEv rightEv = do
@@ -147,7 +128,6 @@ updateNumPadVal chg (bck, fwd) =
      then (bck, fwd)
      else (bck<>(T.take 1 fwd), (T.drop 1 fwd))
 
-
 verify :: Text -> Maybe Text
 verify t =
   case (readMaybe (unpack t)::Maybe Float) of
@@ -165,8 +145,6 @@ verify t =
       then Just t
       else Nothing
 
-
-
 -- quote getting thing
 quoteRoute :: Text
 quoteRoute = renderBackendRoute checkedFullRouteEncoder $ BackendRoute_GetQuote :/ ()
@@ -174,8 +152,7 @@ quoteRoute = renderBackendRoute checkedFullRouteEncoder $ BackendRoute_GetQuote 
 happQuote :: AppWidget js t m => Event t Text -> m (Dynamic t Text)
 happQuote ev = holdDyn "" ev
 
-quoteBox :: WidgetWithJS js t m => Event t a -> m ()
+quoteBox :: WidgetWithJS js t m => Event t a -> m (Dynamic t Text)
 quoteBox ev = do
   evQuo <- getAndDecode (tag (constant quoteRoute) ev)
-  currQuo <- happQuote (fromMaybe "whoops" <$> evQuo)
-  dynText $ currQuo
+  happQuote (fromMaybe "whoops" <$> evQuo) --

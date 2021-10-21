@@ -21,6 +21,7 @@ import qualified Data.Text as T
 import Text.Read
 import Reflex.Dom.Core
 import Control.Monad.Fix (MonadFix)
+import Control.Monad (join)
 import Language.Javascript.JSaddle (MonadJSM)
 
 import Obelisk.Frontend
@@ -75,6 +76,7 @@ convScale = ( MM =: (1, MM) <>
               KM =: (1000000, MM) <>
               IN =: (25.4, MM) <>
               FT =: (304.8, MM) <>
+              YD =: (914.4, MM) <>
               MI =: (1609344, MM) <>
               MN =: (10.4, MM) <>
              MMN =: (9.525, MM) <>
@@ -225,6 +227,11 @@ formulaCalc =
     dynText ((\(x, y) -> x<>y) <$> numInput)
     fromUnit <- dropdown NONE (convMap <$> dynConvType) (DropdownConfig never (constDyn Map.empty))
     rec
-      display (ffor3 ((\(x, y) -> x<>y) <$> numInput) (_dropdown_value fromUnit) (_dropdown_value toUnit) convert)
+      let dynAns = (ffor3 ((\(x, y) -> x<>y) <$> numInput) (_dropdown_value fromUnit) (_dropdown_value toUnit) convert)
+      uniAns <- holdUniqDyn dynAns
+      dynText dynAns
       toUnit <- dropdown NONE (convMap <$> dynConvType) (DropdownConfig never (constDyn Map.empty))
-    return ()
+    dynQuote <- prerender
+      (return (constDyn ""))
+      (quoteBox (updated uniAns))
+    dynText (join dynQuote)

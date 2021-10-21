@@ -42,6 +42,7 @@ header = divClass "header" $ do
   elAttr "a" ("href" =: "/") $ text "Calculator"
   elAttr "a" ("href" =: "/formula") $ text "Conversions"
   elAttr "a" ("href" =: "/longform") $ text "Equations"
+  elAttr "a" ("href" =: "/graph") $ text "Graphing"
 
 app :: (AppWidget js t m, SetRoute t (R FrontendRoute) m) => RoutedT t (R FrontendRoute) m ()
 app =
