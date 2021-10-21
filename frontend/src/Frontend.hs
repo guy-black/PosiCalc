@@ -35,12 +35,13 @@ import Common.Route
 import LongFormCalc
 import FormulaCalc
 import DesktopCalc
+import GraphCalc
 
 header :: AppWidget js t m => m ()
 header = divClass "header" $ do
-  elAttr "a" ("href" =: "/" <> "class" =: "number") $ text "Simple Calculator"
-  elAttr "a" ("href" =: "/formula") $ text "Formulas and Conversions"
-  elAttr "a" ("href" =: "/longform") $ text "Longform Calculator"
+  elAttr "a" ("href" =: "/") $ text "Calculator"
+  elAttr "a" ("href" =: "/formula") $ text "Conversions"
+  elAttr "a" ("href" =: "/longform") $ text "Equations"
 
 app :: (AppWidget js t m, SetRoute t (R FrontendRoute) m) => RoutedT t (R FrontendRoute) m ()
 app =
@@ -51,6 +52,8 @@ app =
       formulaCalc
     FrontendRoute_LongForm ->
       longFormCalc
+    FrontendRoute_Graphing ->
+      graphingCalc
 
 viewport :: Map Text Text
 viewport = "name" =: "viewport"

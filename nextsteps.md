@@ -1,41 +1,84 @@
 # frontend
 - make longform calculations work
-  - number pad widget
-    - on first click start number segment of equation
-    - when click away, convert -. to -0., preface leading . with 0
-    - if trailing or naked . or naked -, then highlight problem instead of leaving segment
-    - after leaving segment, push it in the correct spot in the list of equation segments
-    - if click away to an open parenthesis, add a multiplication sign inbetween, making implicit explicit
-  - operators/symbols widget
-    - no two consecutive operators
-    - clicking on more operators before clicking away just changes the operator
-    - cannot click away to closing parenthesis
-    - on click away, is pushed to correct spot in the segment list
-  - parenthesis widget
-    - just keep track of number of parernthesis level
-      - on open parenthesis, push an open parenthesis of level to the right spot in segment list, increment paren level
-      - close paren only available if
-        - paren level > 0 and
-        - current active widget isn't operator
-      - on close paren, add close paren segment to sement list
-    - number parens in segment list
-    - only allow solve if paren level 0
+  - segment datatype
+  ```
+  data Segment = Operator Text
+               | Number Text
+               | NumWCur (Text, Text)
+               | Paren [Segment]
+               | Curs
+               | Var -- dont add till rest is done
+      Deriving Show 
+      ```
+  - solver model datype
+  ```
+  data Solver = 
+    Solver {
+      _solver_segments :: [Segment]
+    , _solver_solvable :: Bool 
+    }
+  ```
+  - 3 input pads
+    - number pad widget
+      - on first click start NumWCur segment of equation
+      - when click away, convert -. to -0., preface leading . with 0
+      - if trailing or naked . or naked -, then highlight problem instead of leaving segment
+      - after leaving segment, push it in the correct spot in the list of equation segments
+      - if click away to an open parenthesis, add a multiplication sign inbetween, making implicit explicit
+      - if click on op while curser is in number, split num and put op in between with cursor after
+    - operators/symbols widget
+      - opPad :: AppWidget js t m => m(Event t Text)
+        - +, -, /, *, ^
+      - on fire push operator before cursor in [Segment] 
+    - parenthesis widget
+      - parenPad :: AppWidget js t m => m(Dynamic t Int)
+      - keep track of number of parenthesis level
+        - on ( add Paren [Curs] to [Segment], inc paren level count
+        - if curs is in a Paren, then all buttons push to that [Segment]
+        - close paren only available if paren level > 0
+          - on close paren, move cursor and everthing after from Paren [Segment] to outer [Segment]
+    - on every _solver _segments change
+      - solver_solvable is False if
+        - paren level is > 0
+        - main or any nested [Segment] either
+          - ends with operator
+          - contains 2 consecutive operators or numbers
+  - show [Segment]
   - on solve
-    - solve most deeply nested parenthesis
-        - print new expression with simplified parenthesis
-        - repeat until all parenthesis are gone
-      - apply most deeply nested exponents to their bases
+    - if solver_solvable == False
+      - if parenLevel > 0 print that there are open parens still
+      - else move cursor to first problem
+        - print weather its two consecutive nums, ops, or just a trailing op
+    - else if length [Segment] == 1
+      - render Segment
+    - else if there are parenthesis
+      - recurse on [Segment] on parenthesis
+      - replace paren in [Segment] with Number final answer
+      - show new [Segment]
+      - if length new [Segment] == 1 return ()
+      - else recurse on solve with new [Segment]
+    - else if there are Exponent op
         - x^y^z == x^(y^z)  <-- point or order of operations
         - (x^y)^z == x^(y*z) <-- maybe more efficient?
-        - print new expression without the exponent
-        - repeat until all exponent are gone
-      - look left to right for a multplication or division
-        - if one is found
-          -print new expression with that solved
-          - repeat until no more multiplication or division
-      - there should only be numbers and plus or minuses now
-      - solve leftmost operation and print result until final result
-- graphing calculator?
+      - find consecutive Exp Ops with only one number between
+      - replace last n^y of each streak with ans
+      - recurse with new [Segment]
+    - else if there are x or / ops
+      - find consecutive mul or div ops
+        - replace first x*y or x/y of each streak with answer
+        - recurse with new [Segment]
+    - else only nums and + - ops should remain
+      - replace first x+y or x-y with answer
+      - recurse with new [Segment]
+- graphing calculator
+  - Dynamic t (Int, Int) to represent initial graph size and dimensions
+  - Dynamic t (Int, Int) how far off center the view of the graph is
+  - num, operator, and variable input
+    - only variable are x and y
+  - on print, map functions [range of visible x]
+  - zip both into [(x, y)] coords
+  - mark appropriate grid on graph
+  - on graph resize or scroll, adjust numbers for size and view, recalculate, and rerender
 - make it look good
             
 # backend

@@ -40,6 +40,7 @@ data FrontendRoute :: * -> * where
   FrontendRoute_Main :: FrontendRoute ()
   FrontendRoute_Formulas :: FrontendRoute ()
   FrontendRoute_LongForm :: FrontendRoute ()
+  FrontendRoute_Graphing :: FrontendRoute ()
 
 fullRouteEncoder
   :: Encoder (Either Text) Identity (R (FullRoute BackendRoute FrontendRoute)) PageName
@@ -51,6 +52,7 @@ fullRouteEncoder = mkFullRouteEncoder
   (\case
       FrontendRoute_Formulas -> PathSegment "formula" $ unitEncoder mempty
       FrontendRoute_LongForm -> PathSegment "longform" $ unitEncoder mempty
+      FrontendRoute_Graphing -> PathSegment "graph" $ unitEncoder mempty
       FrontendRoute_Main -> PathEnd $ unitEncoder mempty)
 
 concat <$> mapM deriveRouteComponent
