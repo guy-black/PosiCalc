@@ -5,19 +5,45 @@
   data Segment = Operator Text
                | Number Text
                | NumWCur (Text, Text)
-               | Paren [Segment]
+               | Paren Bool -- True is open, False is closed
                | Curs
-               | Var -- dont add till rest is done
+               | Var -- maybe add later
       Deriving Show 
       ```
   - solver model datype
   ```
-  data Solver = 
-    Solver {
-      _solver_segments :: [Segment]
-    , _solver_solvable :: Bool 
+  data Equation = 
+    Equation {
+      _equation_segments :: [Segment]
+    , _equation_solvable :: Bool 
     }
   ```
+  - events to update Equation state
+    - updated numPad
+      - if there is a NumWCur in [Segment]
+        - do nothing, numpad internal state will deal
+      - else, add a new NumWCur in [Segment] where Curs is
+    - opPad (Text)
+      - if there is a Curs in [Segment]
+        - place Operator Text infront of Curs in [Segment]
+      - else replace NumWCur with two Num Text in [Segment], place Operator Text in between
+    - paren
+      - if there is a curs
+        - add paren right before it
+      - else
+        - split NumWCur into two Num, with paren in between
+    - bcksp
+      - if there is a Curs and it's not the first element
+        - remove the Segment before Curs
+      - else do nothing
+    - curs left
+      - if there is a Curs and it's not the first Segment
+        - swap curs with [Segment] to the left
+    - curs right
+      - if there is a Curs and it's not the last Segment
+        - swap curs with [Segment] to the right
+    - clear
+      - replace [Segment] with Curs:[]
   - 3 input pads
     - number pad widget
       - on first click start NumWCur segment of equation
