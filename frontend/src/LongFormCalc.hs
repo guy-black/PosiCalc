@@ -120,7 +120,7 @@ updateExp chg exp@(Expression li b nps npl npr npb) =
           else case li!!(t+1) of
             Num a -> Expression ((take (t+1) li) <> (NumWCur:[]) <> (drop (t+2) li)) b (Just (T.init "", a)) False False False -- replace this Num with NumWCur, set numpad to ("", a)
             _ -> Expression ((take t li) <> ((li!!(t+1)):[]) <> ((li!!t):[]) <> (drop (t+2) li)) b Nothing False False False
-    Clear -> Expression [] False (Just ("","")) False False False
+    Clear -> Expression [Curs] False (Just ("","")) False False False
     NumPress t ->
       if elem NumWCur li
       then Expression li b Nothing False False False -- do nothing, the widget already handles it
@@ -132,13 +132,14 @@ updateExp chg exp@(Expression li b nps npl npr npb) =
 
 longFormCalc :: AppWidget js t m => m ()
 longFormCalc = do
+  bcksp <- button "⌫"
+  clr <- button "clr"
+  left <- button "<-"
+  right <- button "->"
   rec
-    currExpr <- foldDyn updateExp (Expression [Curs] False Nothing False False False) (leftmost [Bcksp <$ bcksp, Clear <$ clr, CurLeft <$ left, CurRight <$ right, (NumPress . (\(f,t)->f<>t)) <$> (updated numPad)])
+    currExpr <- foldDyn updateExp (Expression [Curs] False Nothing False False False) (leftmost [Bcksp <$ bcksp, Clear <$ clr, CurLeft <$ left, CurRight <$ right, (NumPress . (\(f,t)->f<>t)) <$> (never)])
     -- this looks an awful lot like a Bad Solution™
     numPad <- numberPad (fmapMaybe id (_expression_npSet <$> (updated currExpr))) (ffilter id (_expression_npBcksp <$> (updated currExpr))) (ffilter id (_expression_npLeft <$> (updated currExpr))) (ffilter id (_expression_npRight <$> (updated currExpr)))
     display (_expression_segments <$> currExpr)
-    bcksp <- button "⌫"
-    clr <- button "clr"
-    left <- button "<-"
-    right <- button "->"
+    display numPad
   return ()
